@@ -29,6 +29,8 @@ model User {
   paymentsReceived Payment[]       @relation("ReceivedBy")
   movements        StockMovement[] @relation("PerformedBy")
   activityLogs     ActivityLog[]
+  phoneDeletionsPerformed PhoneDeletionLog[] @relation("PhoneDeletionByUser")
+  phoneDeletionSnapshots    PhoneDeletionLog[] @relation("PhoneDeletionOriginalAdder")
 
   @@map("users")
 }
@@ -179,6 +181,33 @@ model Alert {
   @@index([status])
   @@index([type, relatedId])
   @@map("alerts")
+}
+
+// ─── PhoneDeletionLog — instantané conservé quand un téléphone est supprimé ─
+model PhoneDeletionLog {
+  id            String   @id @default(cuid())
+  deletedAt     DateTime @default(now())
+  deletedById   String
+  deletedBy     User     @relation("PhoneDeletionByUser", fields: [deletedById], references: [id])
+
+  formerPhoneId String
+  brand         String
+  model         String
+  capacity      String   @default("")
+  color         String   @default("")
+  imei          String
+  sellingPrice  Float
+  purchasePrice Float?
+  status        String
+  photos        String   @default("[]")
+  notes         String   @default("")
+  addedAt       DateTime
+  addedById     String
+  addedBy       User     @relation("PhoneDeletionOriginalAdder", fields: [addedById], references: [id])
+
+  @@index([deletedAt])
+  @@index([imei])
+  @@map("phone_deletion_logs")
 }
 
 // ─── ActivityLog ───────────────────────────────────────────────────────────

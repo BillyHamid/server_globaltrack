@@ -1,20 +1,26 @@
 {
   "name": "globaltrack-backend",
   "version": "1.0.0",
+  "private": true,
   "description": "GlobalTrack REST API — gestion de stock et ventes de téléphones",
-  "main": "dist/index.js",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "dev": "node --watch src/server.js",
+    "build": "prisma generate",
+    "start": "node src/server.js",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:seed:users-only": "tsx prisma/seed-users-only.ts",
-    "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts",
-    "db:reset:empty": "prisma migrate reset --force --skip-seed && tsx prisma/seed-users-only.ts",
-    "db:studio": "prisma studio"
+    "db:seed": "node prisma/seed.js",
+    "db:seed:users-only": "node prisma/seed-users-only.js",
+    "db:reset": "prisma migrate reset --force && node prisma/seed.js",
+    "db:reset:empty": "prisma migrate reset --force --skip-seed && node prisma/seed-users-only.js",
+    "db:studio": "prisma studio",
+    "check": "node --check src/server.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -30,14 +36,9 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/jsonwebtoken": "^9.0.7",
-    "@types/morgan": "^1.9.9",
-    "@types/node": "^22.7.5",
-    "prisma": "^5.22.0",
-    "tsx": "^4.19.1",
-    "typescript": "^5.6.3"
+    "prisma": "^5.22.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   }
 }
