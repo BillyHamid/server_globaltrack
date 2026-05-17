@@ -22,12 +22,12 @@ async function main() {
         email: 'sana.djibrill@globaltrack.cd',
         password: pwDjibrill,
         role: 'admin',
-        phone: '+243 991 234 567',
+        phone: '+1 (303) 915-2603',
         isActive: true,
       },
       create: {
         id: 'u1', name: 'Sana DJibrill', email: 'sana.djibrill@globaltrack.cd',
-        password: pwDjibrill, role: 'admin', phone: '+243 991 234 567', isActive: true,
+        password: pwDjibrill, role: 'admin', phone: '+1 (303) 915-2603', isActive: true,
       },
     }),
     prisma.user.upsert({
@@ -37,12 +37,12 @@ async function main() {
         email: 'sana.mohamadi@globaltrack.cd',
         password: pwMohamadi,
         role: 'vendeur',
-        phone: '+243 992 345 678',
+        phone: '+226 73 63 72 88',
         isActive: true,
       },
       create: {
         id: 'u2', name: 'Sana Mohamadi', email: 'sana.mohamadi@globaltrack.cd',
-        password: pwMohamadi, role: 'vendeur', phone: '+243 992 345 678', isActive: true,
+        password: pwMohamadi, role: 'vendeur', phone: '+226 73 63 72 88', isActive: true,
       },
     }),
     prisma.user.upsert({
@@ -52,12 +52,12 @@ async function main() {
         email: 'bernadette@globaltrack.cd',
         password: pwBernadette,
         role: 'vendeur',
-        phone: '+243 993 456 789',
+        phone: '+226 76 22 56 53',
         isActive: true,
       },
       create: {
         id: 'u3', name: 'Bernadette', email: 'bernadette@globaltrack.cd',
-        password: pwBernadette, role: 'vendeur', phone: '+243 993 456 789', isActive: true,
+        password: pwBernadette, role: 'vendeur', phone: '+226 76 22 56 53', isActive: true,
       },
     }),
     prisma.user.upsert({
@@ -67,12 +67,12 @@ async function main() {
         email: 'bassirou@globaltrack.cd',
         password: pwBassirou,
         role: 'vendeur',
-        phone: '+243 994 567 890',
+        phone: '+226 77 84 72 69',
         isActive: true,
       },
       create: {
         id: 'u4', name: 'Bassirou', email: 'bassirou@globaltrack.cd',
-        password: pwBassirou, role: 'vendeur', phone: '+243 994 567 890', isActive: true,
+        password: pwBassirou, role: 'vendeur', phone: '+226 77 84 72 69', isActive: true,
       },
     }),
   ])
