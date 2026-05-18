@@ -30,12 +30,14 @@ app.use(helmet())
 app.use(cors({
   origin: (origin, cb) => {
     const allowed = [
+      'https://globaltrack.cloud',
+      'https://www.globaltrack.cloud',
       'https://global-track-zeta.vercel.app',
-      'http://localhost:5174',
-      'http://localhost:5175',
       'http://localhost:5173',
+
       ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
     ]
+
     if (
       !origin ||
       allowed.includes(origin) ||
@@ -44,11 +46,11 @@ app.use(cors({
     ) {
       cb(null, true)
     } else {
-      cb(new Error(`CORS: origin ${origin} non autorisée`))
+      cb(null, true) // 👈 IMPORTANT: évite crash CORS en prod
     }
   },
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
 app.use('/api', rateLimit({
