@@ -28,30 +28,13 @@ const PORT = parseInt(process.env.PORT ?? '3001', 10)
 
 app.use(helmet())
 app.use(cors({
-  origin: (origin, cb) => {
-    const allowed = [
-      'https://globaltrack.cloud',
-      'https://www.globaltrack.cloud',
-      'https://global-track-zeta.vercel.app',
-      'http://localhost:5173',
-
-      ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
-    ]
-
-    if (
-      !origin ||
-      allowed.includes(origin) ||
-      origin.endsWith('.ngrok-free.dev') ||
-      origin.endsWith('.vercel.app')
-    ) {
-      cb(null, true)
-    } else {
-      cb(null, true) // 👈 IMPORTANT: évite crash CORS en prod
-    }
-  },
+  origin: [
+    'https://globaltrack.cloud',
+  ],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}))
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.use('/api', rateLimit({
   windowMs: 15 * 60 * 1000,
