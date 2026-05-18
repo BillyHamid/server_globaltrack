@@ -44,7 +44,7 @@ model Phone {
   color        String   @default("")
   sellingPrice   Float
   purchasePrice  Float? // prix d'achat (optionnel)
-  imei           String   @unique
+  imei           String?  @unique
   status       String   @default("disponible") // disponible | vendu | credit | sortie
   photos       String   @default("[]")          // JSON array sérialisé
   addedAt      DateTime @default(now())
@@ -195,7 +195,7 @@ model PhoneDeletionLog {
   model         String
   capacity      String   @default("")
   color         String   @default("")
-  imei          String
+  imei          String?
   sellingPrice  Float
   purchasePrice Float?
   status        String

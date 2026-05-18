@@ -9,19 +9,24 @@ import { AppError } from '../middleware/error.middleware.js'
 const router = Router()
 router.use(authenticate)
 
-const createPhoneSchema = z.object({
+const phoneBaseSchema = z.object({
   brand: z.string().min(1),
   model: z.string().min(1),
   capacity: z.string().default(''),
   color: z.string().default(''),
   sellingPrice: z.number().positive('Prix de vente invalide'),
   purchasePrice: z.number().nonnegative().optional().nullable(),
-  imei: z.string().regex(/^\d{15}$/, 'IMEI doit contenir 15 chiffres'),
+  imei: z.string().regex(/^\d{15}$/, 'IMEI doit contenir 15 chiffres').optional().nullable(),
+  serialNumber: z.string().min(8).max(20).optional().nullable(),
   notes: z.string().optional().default(''),
   photos: z.array(z.string()).optional().default([]),
 })
 
-const updatePhoneSchema = createPhoneSchema.partial().omit({ imei: true })
+const createPhoneSchema = phoneBaseSchema.refine(d => d.imei || d.serialNumber, {
+  message: 'Un IMEI ou un numéro de série est requis',
+})
+
+const updatePhoneSchema = phoneBaseSchema.partial().omit({ imei: true })
 
 router.get('/', async (req, res, next) => {
   try {
@@ -158,15 +163,23 @@ router.get('/:id', async (req, res, next) => {
 
 router.post('/', validate(createPhoneSchema), async (req, res, next) => {
   try {
-    const data = req.body
+    const { photos, purchasePrice, serialNumber, imei, ...rest } = req.body
 
-    const existing = await prisma.phone.findUnique({ where: { imei: data.imei } })
-    if (existing) throw new AppError(409, `L'IMEI ${data.imei} est déjà enregistré (téléphone #${existing.id})`)
+    if (imei) {
+      const existing = await prisma.phone.findUnique({ where: { imei } })
+      if (existing) throw new AppError(409, `L'IMEI ${imei} est déjà enregistré (téléphone #${existing.id})`)
+    }
 
-    const { photos, purchasePrice, ...rest } = data
+    const identifier = imei ?? null
+    const notesWithSerial = serialNumber
+      ? `${rest.notes ? rest.notes + '\n' : ''}Numéro de série : ${serialNumber}`
+      : rest.notes ?? ''
+
     const phone = await prisma.phone.create({
       data: {
         ...rest,
+        imei: identifier,
+        notes: notesWithSerial,
         purchasePrice: purchasePrice ?? undefined,
         photos: JSON.stringify(photos),
         addedById: req.user.userId,
@@ -178,10 +191,11 @@ router.post('/', validate(createPhoneSchema), async (req, res, next) => {
       data: { type: 'entree', phoneId: phone.id, performedById: req.user.userId },
     })
 
+    const identLabel = imei ? `IMEI: ${imei}` : `S/N: ${serialNumber}`
     await logActivity(
       req.user.userId,
       'PHONE_ADDED',
-      `${phone.brand} ${phone.model} ajouté au stock (IMEI: ${phone.imei}, prix: ${phone.sellingPrice.toLocaleString('fr-FR')} FC)`,
+      `${phone.brand} ${phone.model} ajouté au stock (${identLabel}, prix: ${phone.sellingPrice.toLocaleString('fr-FR')} FC)`,
     )
 
     res.status(201).json({ ...phone, photos: JSON.parse(phone.photos) })

@@ -1,33 +1,9 @@
 import { Router } from 'express'
 import { authenticate } from '../middleware/auth.middleware.js'
+import { requestSickwCheck, SickwConfigError, SickwUnavailableError } from '../services/sickw.service.js'
 
 const router = Router()
 router.use(authenticate)
-
-async function callSickW(serialNumber, service) {
-  const key = process.env.SICKW_API_KEY?.trim()
-  if (!key) throw new Error('SICKW_API_KEY non configurée')
-
-  const url = `https://sickw.com/api.php?format=beta&key=${key}&imei=${encodeURIComponent(serialNumber)}&service=${service}`
-
-  const controller = new AbortController()
-  const t = setTimeout(() => controller.abort(), 15_000)
-  let res
-  try {
-    res = await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(t)
-  }
-
-  if (!res.ok) throw new Error(`SickW HTTP ${res.status}`)
-
-  const data = await res.json()
-  if (data.status === 'error' || !data.result || typeof data.result !== 'object') {
-    throw new Error(typeof data.result === 'string' ? data.result : 'SickW: résultat invalide')
-  }
-
-  return data.result
-}
 
 router.post('/', async (req, res, next) => {
   try {
@@ -37,21 +13,28 @@ router.post('/', async (req, res, next) => {
       return
     }
 
-    let result
+    let raw
     try {
-      // Service 30 — APPLE BASIC INFO (iPhone, iPad, Watch, Mac récents)
-      result = await callSickW(serialNumber, 30)
+      raw = await requestSickwCheck(serialNumber, 30) // APPLE BASIC INFO
     } catch {
-      // Fallback service 26 — APPLE SERIAL INFO (vieux Mac)
-      result = await callSickW(serialNumber, 26)
+      raw = await requestSickwCheck(serialNumber, 26) // Fallback: APPLE SERIAL INFO
     }
 
+    if (raw.status !== 'success' || !raw.result || typeof raw.result !== 'object') {
+      const msg = typeof raw.message === 'string' ? raw.message : 'Erreur API SickW'
+      return res.status(400).json({ error: msg })
+    }
+
+    const result = raw.result
     res.json({
       brand: 'Apple',
       model: result['Model Name'] ?? result['Model'] ?? 'Inconnu',
       capacity: result['Model Capacity'] ?? result['Storage'] ?? 'N/A',
     })
   } catch (err) {
+    if (err instanceof SickwUnavailableError || err instanceof SickwConfigError) {
+      return res.status(500).json({ error: err.message })
+    }
     next(err)
   }
 })
