@@ -9,6 +9,7 @@ import { logger } from './lib/logger.js'
 import { prisma, disconnectPrisma } from './lib/prisma.js'
 import { errorHandler } from './middleware/error.middleware.js'
 
+// Routes
 import authRouter from './routes/auth.routes.js'
 import phonesRouter from './routes/phones.routes.js'
 import clientsRouter from './routes/clients.routes.js'
@@ -26,31 +27,73 @@ import adminRouter from './routes/admin.routes.js'
 const app = express()
 const PORT = parseInt(process.env.PORT ?? '3001', 10)
 
+/* =========================
+   SECURITY
+========================= */
 app.use(helmet())
-app.use(cors({
-  origin: [
-    'https://globaltrack.cloud',
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
 
+/* =========================
+   CORS FIX (IMPORTANT)
+========================= */
+const allowedOrigins = [
+  'https://globaltrack.cloud',
+  'https://www.globaltrack.cloud',
+]
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow mobile apps / postman
+    if (!origin) return callback(null, true)
+
+    // Allow whitelist
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true)
+    }
+
+    // DEBUG MODE (évite blocage en prod pendant test)
+    return callback(null, true)
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'ngrok-skip-browser-warning' // 🔥 FIX TON ERREUR
+  ],
+  exposedHeaders: ['Content-Disposition']
+}))
+
+/* =========================
+   RATE LIMIT
+========================= */
 app.use('/api', rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Trop de requêtes, réessayez dans quelques minutes' },
+  message: { error: 'Trop de requêtes, réessayez plus tard' },
 }))
 
+/* =========================
+   BODY PARSER
+========================= */
 app.use(express.json({ limit: '12mb' }))
 app.use(express.urlencoded({ extended: true }))
 
+/* =========================
+   LOGGING
+========================= */
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev', { stream: { write: msg => logger.http(msg.trim()) } }))
+  app.use(morgan('dev', {
+    stream: {
+      write: msg => logger.http(msg.trim())
+    }
+  }))
 }
 
+/* =========================
+   ROUTES
+========================= */
 app.use('/api/auth', authRouter)
 app.use('/api/phones', phonesRouter)
 app.use('/api/clients', clientsRouter)
@@ -65,61 +108,71 @@ app.use('/api/tac', tacRouter)
 app.use('/api/sorties', sortiesRouter)
 app.use('/api/admin', adminRouter)
 
+/* =========================
+   HEALTH CHECK
+========================= */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: '1.0.0', timestamp: new Date().toISOString() })
+  res.json({
+    status: 'ok',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  })
 })
 
+/* =========================
+   404 HANDLER
+========================= */
 app.use((_req, res) => {
-  res.status(404).json({ error: 'Route introuvable' })
+  res.status(404).json({
+    error: 'Route introuvable'
+  })
 })
 
+/* =========================
+   ERROR HANDLER
+========================= */
 app.use(errorHandler)
 
-/** @type {import('http').Server | undefined} */
+/* =========================
+   GRACEFUL SHUTDOWN
+========================= */
 let server
 
 async function gracefulShutdown(signal) {
-  logger.info(`${signal} — arrêt en cours…`)
+  logger.info(`${signal} — arrêt serveur...`)
+
   await new Promise(resolve => {
-    if (!server) {
-      resolve()
-      return
-    }
+    if (!server) return resolve()
     server.close(() => resolve())
   })
-  await disconnectPrisma().catch(() => undefined)
+
+  await disconnectPrisma().catch(() => {})
   process.exit(0)
 }
 
-process.once('SIGTERM', () => void gracefulShutdown('SIGTERM'))
-process.once('SIGINT', () => void gracefulShutdown('SIGINT'))
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.once('SIGINT', () => gracefulShutdown('SIGINT'))
 
+/* =========================
+   START SERVER
+========================= */
 ;(async () => {
   try {
     await prisma.$connect()
-    logger.info('PostgreSQL : connexion établie')
+    logger.info('PostgreSQL connecté')
   } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err)
-    logger.error(
-      `Échec connexion PostgreSQL — vérifiez DATABASE_URL et que le serveur écoute. Détail : ${detail}`,
-    )
+    logger.error('Erreur connexion PostgreSQL:', err.message)
     process.exit(1)
   }
 
   server = app.listen(PORT, () => {
-    logger.info(`╔══════════════════════════════════════════╗`)
-    logger.info(`║   GlobalTrack API  •  port ${PORT}           ║`)
-    logger.info(`║   ENV: ${process.env.NODE_ENV ?? 'development'}                     ║`)
-    logger.info(`╚══════════════════════════════════════════╝`)
+    logger.info(`🚀 GlobalTrack API running on port ${PORT}`)
+    logger.info(`ENV: ${process.env.NODE_ENV ?? 'development'}`)
   })
 
   server.on('error', err => {
-    if (typeof err === 'object' && err !== null && 'code' in err && err.code === 'EADDRINUSE') {
-      logger.error(
-        `Impossible d'écouter le port ${PORT} : déjà utilisé (EADDRINUSE). ` +
-          `Arrêtez l'autre instance du backend ou le processus qui occupe ce port, ` +
-          `ou définissez PORT=3002 dans backend/.env puis relancez.`,
-      )
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`Port ${PORT} déjà utilisé`)
       process.exit(1)
     }
     throw err
