@@ -23,6 +23,7 @@ import dashboardRouter from './routes/dashboard.routes.js'
 import tacRouter from './routes/tac.routes.js'
 import sortiesRouter from './routes/sorties.routes.js'
 import adminRouter from './routes/admin.routes.js'
+import checkSerialRouter from './routes/check-serial.routes.js'
 
 const app = express()
 const PORT = parseInt(process.env.PORT ?? '3001', 10)
@@ -107,6 +108,14 @@ app.use('/api/dashboard', dashboardRouter)
 app.use('/api/tac', tacRouter)
 app.use('/api/sorties', sortiesRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/check-serial', checkSerialRouter)
+
+/* =========================
+   ROOT
+========================= */
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', message: 'GlobalTrack API opérationnelle' })
+})
 
 /* =========================
    HEALTH CHECK
