@@ -113,6 +113,7 @@ model Sale {
   paidAmount      Float     @default(0)
   remainingAmount Float
   paymentStatus   String    @default("impaye") // paye | partiel | impaye
+  status          String    @default("active") // active | annulée
   date            DateTime  @default(now())
   dueDate         DateTime?
   notes           String    @default("")

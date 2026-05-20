@@ -39,6 +39,7 @@ app.use(helmet())
 const allowedOrigins = [
   'https://globaltrack.cloud',
   'https://www.globaltrack.cloud',
+  'http://localhost:5173'
 ]
 
 app.use(cors({

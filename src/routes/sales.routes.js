@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
-import { authenticate } from '../middleware/auth.middleware.js'
+import { authenticate, authorize } from '../middleware/auth.middleware.js'
 import { validate } from '../middleware/validate.middleware.js'
 import { logActivity } from '../services/activity.service.js'
 import { AppError } from '../middleware/error.middleware.js'
@@ -268,5 +268,90 @@ router.patch(
     }
   },
 )
+
+router.patch('/:id/cancel', authorize('admin', 'gestionnaire'), async (req, res, next) => {
+  try {
+    const sale = await prisma.sale.findUnique({
+      where: { id: req.params.id },
+      include: { phone: true, client: true },
+    })
+    if (!sale) throw new AppError(404, 'Vente introuvable')
+    if (sale.status === 'annulée') throw new AppError(400, 'Cette vente est déjà annulée')
+
+    let updated
+    await prisma.$transaction(async (tx) => {
+      updated = await tx.sale.update({
+        where: { id: sale.id },
+        data: { status: 'annulée' },
+        include: saleInclude,
+      })
+
+      await tx.phone.update({
+        where: { id: sale.phoneId },
+        data: { status: 'disponible' },
+      })
+
+      await tx.client.update({
+        where: { id: sale.clientId },
+        data: { totalPurchases: { decrement: 1 } },
+      })
+
+      await tx.stockMovement.create({
+        data: { type: 'retour', phoneId: sale.phoneId, performedById: req.user.userId, notes: 'Annulation de vente' },
+      })
+    })
+
+    await logActivity(
+      req.user.userId,
+      'SALE_CANCELLED',
+      `Vente annulée — ${sale.phone.brand} ${sale.phone.model} — client ${sale.client.name} — ${sale.totalAmount.toLocaleString('fr-FR')} FC`,
+    )
+
+    res.json(updated)
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.delete('/:id', authorize('admin', 'gestionnaire'), async (req, res, next) => {
+  try {
+    const sale = await prisma.sale.findUnique({
+      where: { id: req.params.id },
+      include: { phone: true, client: true },
+    })
+    if (!sale) throw new AppError(404, 'Vente introuvable')
+
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.deleteMany({ where: { saleId: sale.id } })
+
+      await tx.stockMovement.deleteMany({
+        where: { phoneId: sale.phoneId, type: { in: ['vente', 'retour'] } },
+      })
+
+      if (sale.status !== 'annulée') {
+        await tx.phone.update({
+          where: { id: sale.phoneId },
+          data: { status: 'disponible' },
+        })
+        await tx.client.update({
+          where: { id: sale.clientId },
+          data: { totalPurchases: { decrement: 1 } },
+        })
+      }
+
+      await tx.sale.delete({ where: { id: sale.id } })
+    })
+
+    await logActivity(
+      req.user.userId,
+      'SALE_DELETED',
+      `Vente supprimée définitivement — ${sale.phone.brand} ${sale.phone.model} — client ${sale.client.name} — ${sale.totalAmount.toLocaleString('fr-FR')} FC`,
+    )
+
+    res.json({ ok: true })
+  } catch (err) {
+    next(err)
+  }
+})
 
 export default router
