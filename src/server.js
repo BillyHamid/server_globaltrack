@@ -28,6 +28,9 @@ import checkSerialRouter from './routes/check-serial.routes.js'
 const app = express()
 const PORT = parseInt(process.env.PORT ?? '3001', 10)
 
+// Required when running behind a reverse proxy (nginx) — trusts the first proxy
+app.set('trust proxy', 1)
+
 /* =========================
    SECURITY
 ========================= */
