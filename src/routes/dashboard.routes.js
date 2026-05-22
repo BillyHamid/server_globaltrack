@@ -42,7 +42,12 @@ router.get('/', async (req, res, next) => {
       debtByClient,
     ] = await Promise.all([
       prisma.phone.findMany({
-        include: { addedBy: { select: { id: true, name: true } } },
+        select: {
+          id: true, brand: true, model: true, capacity: true, color: true,
+          sellingPrice: true, purchasePrice: true, imei: true, status: true,
+          addedAt: true, notes: true, addedById: true,
+          addedBy: { select: { id: true, name: true } },
+        },
         orderBy: { addedAt: 'desc' },
         take: limit,
       }),
@@ -83,7 +88,7 @@ router.get('/', async (req, res, next) => {
     const debtMap = new Map(debtByClient.map(d => [d.clientId, d._sum.remainingAmount ?? 0]))
     const clients = clientsRaw.map(c => ({ ...c, totalDebt: debtMap.get(c.id) ?? 0 }))
 
-    const phonesOut = phones.map(p => ({ ...p, photos: parsePhotosJson(p.photos) }))
+    const phonesOut = phones.map(p => ({ ...p, photos: [] }))
 
     const movementsOut = movements.map(m => {
       const pb = m.performedBy
