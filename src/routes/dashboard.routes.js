@@ -12,7 +12,11 @@ const saleIncludeBundle = {
   phone: { select: { id: true, brand: true, model: true, imei: true, capacity: true, color: true } },
   client: { select: { id: true, name: true, phone: true, email: true } },
   seller: { select: { id: true, name: true } },
-  payments: { orderBy: { date: 'asc' } },
+  // depositProof (base64 image) est volontairement exclu du bundle — chargé à la demande via GET /sales/:id
+  payments: {
+    orderBy: { date: 'asc' },
+    select: { id: true, amount: true, date: true, method: true, notes: true, saleId: true, receivedById: true },
+  },
 }
 
 function parsePhotosJson(photos) {
@@ -58,7 +62,7 @@ router.get('/', async (req, res, next) => {
         take: limit,
       }),
       prisma.sale.count(),
-      prisma.client.findMany({ orderBy: { createdAt: 'desc' } }),
+      prisma.client.findMany({ orderBy: { createdAt: 'desc' }, take: limit }),
       prisma.stockMovement.findMany({
         include: {
           phone: { select: { id: true, brand: true, model: true, imei: true } },
@@ -70,6 +74,7 @@ router.get('/', async (req, res, next) => {
       prisma.stockMovement.count(),
       prisma.alert.findMany({
         orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        take: 100,
       }),
       prisma.phoneExit.findMany({
         include: {
@@ -77,6 +82,7 @@ router.get('/', async (req, res, next) => {
           createdBy: { select: { id: true, name: true } },
         },
         orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        take: 100,
       }),
       prisma.sale.groupBy({
         by: ['clientId'],
