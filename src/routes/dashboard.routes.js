@@ -12,11 +12,7 @@ const saleIncludeBundle = {
   phone: { select: { id: true, brand: true, model: true, imei: true, capacity: true, color: true } },
   client: { select: { id: true, name: true, phone: true, email: true } },
   seller: { select: { id: true, name: true } },
-  // depositProof (base64 image) est volontairement exclu du bundle — chargé à la demande via GET /sales/:id
-  payments: {
-    orderBy: { date: 'asc' },
-    select: { id: true, amount: true, date: true, method: true, notes: true, saleId: true, receivedById: true },
-  },
+  // payments chargés à la demande via GET /sales/:id — pas dans le bundle
 }
 
 function parsePhotosJson(photos) {
@@ -69,7 +65,7 @@ router.get('/', async (req, res, next) => {
           performedBy: { select: { id: true, name: true } },
         },
         orderBy: { date: 'desc' },
-        take: limit,
+        take: 30,
       }),
       prisma.stockMovement.count(),
       prisma.alert.findMany({
