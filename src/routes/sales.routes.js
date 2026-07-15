@@ -42,8 +42,14 @@ const saleInclude = {
   },
   client: { select: { id: true, name: true, phone: true, email: true } },
   seller: { select: { id: true, name: true } },
+  verifiedBy: { select: { id: true, name: true } },
   payments: { orderBy: { date: 'asc' } },
 }
+
+const verifySaleSchema = z.object({
+  status: z.enum(['approuve', 'anomalie']),
+  comment: z.string().max(1000).optional().default(''),
+})
 
 router.get('/', async (req, res, next) => {
   try {
@@ -268,6 +274,35 @@ router.patch(
     }
   },
 )
+
+router.patch('/:id/verify', authorize('admin', 'gestionnaire'), validate(verifySaleSchema), async (req, res, next) => {
+  try {
+    const { status, comment } = req.body
+    const sale = await prisma.sale.findUnique({ where: { id: req.params.id } })
+    if (!sale) throw new AppError(404, 'Vente introuvable')
+
+    const updated = await prisma.sale.update({
+      where: { id: req.params.id },
+      data: {
+        verificationStatus: status,
+        verificationComment: comment ?? '',
+        verifiedAt: new Date(),
+        verifiedById: req.user.userId,
+      },
+      include: saleInclude,
+    })
+
+    await logActivity(
+      req.user.userId,
+      'SALE_VERIFIED',
+      `Vente ${req.params.id} marquée "${status}"${comment ? ` — ${comment}` : ''}`,
+    )
+
+    res.json(updated)
+  } catch (err) {
+    next(err)
+  }
+})
 
 router.patch('/:id/cancel', authorize('admin', 'gestionnaire'), async (req, res, next) => {
   try {

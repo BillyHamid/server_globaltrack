@@ -26,6 +26,7 @@ model User {
   phonesAdded      Phone[]         @relation("AddedBy")
   phoneExitsCreated PhoneExit[]    @relation("ExitCreatedBy")
   salesMade        Sale[]          @relation("Seller")
+  salesVerified    Sale[]          @relation("VerifiedBy")
   paymentsReceived Payment[]       @relation("ReceivedBy")
   movements        StockMovement[] @relation("PerformedBy")
   activityLogs     ActivityLog[]
@@ -125,12 +126,20 @@ model Sale {
   sellerId String
   seller   User   @relation("Seller", fields: [sellerId], references: [id])
 
+  // ─── Vérification gestionnaire ─────────────────────────────────────────────
+  verificationStatus  String?   // approuve | anomalie
+  verificationComment String    @default("")
+  verifiedAt          DateTime?
+  verifiedById        String?
+  verifiedBy          User?     @relation("VerifiedBy", fields: [verifiedById], references: [id])
+
   payments Payment[]
 
   @@index([sellerId])
   @@index([paymentStatus])
   @@index([clientId])
   @@index([date])
+  @@index([verificationStatus])
   @@map("sales")
 }
 
