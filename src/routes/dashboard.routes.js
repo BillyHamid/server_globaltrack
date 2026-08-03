@@ -29,8 +29,16 @@ router.get('/', async (req, res, next) => {
     const limit =
       Number.isFinite(raw) && raw > 0 ? Math.min(raw, MAX_BUNDLE_LIMIT) : DEFAULT_BUNDLE_LIMIT
 
+    const phoneSelect = {
+      id: true, brand: true, model: true, capacity: true, color: true,
+      sellingPrice: true, purchasePrice: true, imei: true, status: true,
+      addedAt: true, notes: true, addedById: true,
+      addedBy: { select: { id: true, name: true } },
+    }
+
     const [
-      phones,
+      disponiblePhones,
+      otherPhones,
       phonesTotal,
       sales,
       salesTotal,
@@ -42,12 +50,13 @@ router.get('/', async (req, res, next) => {
       debtByClient,
     ] = await Promise.all([
       prisma.phone.findMany({
-        select: {
-          id: true, brand: true, model: true, capacity: true, color: true,
-          sellingPrice: true, purchasePrice: true, imei: true, status: true,
-          addedAt: true, notes: true, addedById: true,
-          addedBy: { select: { id: true, name: true } },
-        },
+        select: phoneSelect,
+        where: { status: 'disponible' },
+        orderBy: { addedAt: 'desc' },
+      }),
+      prisma.phone.findMany({
+        select: phoneSelect,
+        where: { status: { not: 'disponible' } },
         orderBy: { addedAt: 'desc' },
         take: limit,
       }),
@@ -90,6 +99,7 @@ router.get('/', async (req, res, next) => {
     const debtMap = new Map(debtByClient.map(d => [d.clientId, d._sum.remainingAmount ?? 0]))
     const clients = clientsRaw.map(c => ({ ...c, totalDebt: debtMap.get(c.id) ?? 0 }))
 
+    const phones = [...disponiblePhones, ...otherPhones]
     const phonesOut = phones.map(p => ({ ...p, photos: [] }))
 
     const movementsOut = movements.map(m => {

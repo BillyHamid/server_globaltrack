@@ -124,6 +124,11 @@ router.post('/:id/return', validate(returnSchema), async (req, res, next) => {
     const returnedAt = new Date()
 
     const updated = await prisma.$transaction(async tx => {
+      await tx.phone.update({
+        where: { id: exit.phoneId },
+        data: { status: 'disponible' },
+      })
+
       const u = await tx.phoneExit.update({
         where: { id },
         data: {
@@ -135,11 +140,6 @@ router.post('/:id/return', validate(returnSchema), async (req, res, next) => {
           phone: { include: { addedBy: { select: { id: true, name: true } } } },
           createdBy: { select: { id: true, name: true } },
         },
-      })
-
-      await tx.phone.update({
-        where: { id: exit.phoneId },
-        data: { status: 'disponible' },
       })
 
       await tx.stockMovement.create({
