@@ -9,7 +9,7 @@ const DEFAULT_BUNDLE_LIMIT = 180
 const MAX_BUNDLE_LIMIT = 280
 
 const saleIncludeBundle = {
-  phone: { select: { id: true, brand: true, model: true, imei: true, capacity: true, color: true } },
+  phone: { select: { id: true, brand: true, model: true, imei: true, serialNumber: true, capacity: true, color: true } },
   client: { select: { id: true, name: true, phone: true, email: true } },
   seller: { select: { id: true, name: true } },
   // payments chargés à la demande via GET /sales/:id — pas dans le bundle
@@ -31,7 +31,7 @@ router.get('/', async (req, res, next) => {
 
     const phoneSelect = {
       id: true, brand: true, model: true, capacity: true, color: true,
-      sellingPrice: true, purchasePrice: true, imei: true, status: true,
+      sellingPrice: true, purchasePrice: true, imei: true, serialNumber: true, status: true,
       addedAt: true, notes: true, addedById: true,
       addedBy: { select: { id: true, name: true } },
     }

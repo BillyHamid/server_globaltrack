@@ -38,7 +38,7 @@ const patchPaymentDepositProofSchema = z.object({
 
 const saleInclude = {
   phone: {
-    select: { id: true, brand: true, model: true, imei: true, capacity: true, color: true },
+    select: { id: true, brand: true, model: true, imei: true, serialNumber: true, capacity: true, color: true },
   },
   client: { select: { id: true, name: true, phone: true, email: true } },
   seller: { select: { id: true, name: true } },
